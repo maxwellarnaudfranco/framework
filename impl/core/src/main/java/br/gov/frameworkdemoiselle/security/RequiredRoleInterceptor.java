@@ -90,13 +90,19 @@ public class RequiredRoleInterceptor implements Serializable {
 		}
 
 		List<String> userRoles = new ArrayList<String>();
-
+		
 		for (String role : roles) {
 			if (getSecurityContext().hasRole(role)) {
 				userRoles.add(role);
 			}
 		}
 
+		if (getAnd(ic)) {
+			if (!userRoles.containsAll(roles)) {
+				throw new AuthorizationException("Usuário não obtem todos os perfis exigidos" + roles);
+			}
+		}
+		
 		if (userRoles.isEmpty()) {
 			getLogger()
 					.error(getBundle().getString("does-not-have-role", getSecurityContext().getCurrentUser().getName(),
@@ -131,6 +137,20 @@ public class RequiredRoleInterceptor implements Serializable {
 		}
 
 		return Arrays.asList(roles);
+	}
+	
+	private boolean getAnd(InvocationContext ic) {
+		boolean isAnd = false;
+
+		if (ic.getMethod().getAnnotation(RequiredRole.class) == null) {
+			if (ic.getTarget().getClass().getAnnotation(RequiredRole.class) != null) {
+				isAnd = ic.getTarget().getClass().getAnnotation(RequiredRole.class).and();
+			}
+		} else {
+			isAnd = ic.getMethod().getAnnotation(RequiredRole.class).and();
+		}
+
+		return isAnd;
 	}
 
 	private SecurityContext getSecurityContext() {
